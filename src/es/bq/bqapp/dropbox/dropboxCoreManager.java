@@ -15,6 +15,9 @@ import android.net.Uri;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.widget.Button;
@@ -150,7 +153,7 @@ public class dropboxCoreManager extends Activity {
 					// Inicializamos el adapter.
 					adapter = new LibrosAdapter(this,new ArrayList<Libros>());					
 					listFiles(DROPBOX_DIR, FILE_EXTENSION);
-				}
+				}				
 				setLoggedIn(true);
 			} catch (IllegalStateException e) {
 				showToast("Couldn't authenticate with Dropbox:"
@@ -158,7 +161,7 @@ public class dropboxCoreManager extends Activity {
 				Log.i(TAG, "Error authenticating", e);
 			}
 		}
-		gvLibros.setAdapter(adapter);
+		gvLibros.setAdapter(adapter);		
 	}
 
 	
@@ -176,6 +179,38 @@ public class dropboxCoreManager extends Activity {
 		}
 	}
 
+	
+	@Override
+	public boolean onCreateOptionsMenu(Menu menu) {
+		MenuInflater menuInflater = getMenuInflater();		
+		menuInflater.inflate(R.layout.activity_menu, menu);
+		return true;
+	}
+
+	/*
+	* Event Handling for Individual menu item selected
+	* Identify single menu item by it's id
+	*/
+	@Override
+	public boolean onOptionsItemSelected(MenuItem item) {
+		if(adapter != null){
+			switch (item.getItemId()) {
+				case R.id.sort_by_title:
+					adapter.sortByTitle();
+					break;
+				case R.id.sort_by_date:
+					adapter.sortByDate();
+					break;
+				default:
+					return super.onOptionsItemSelected(item);
+			}
+			gvLibros.setAdapter(adapter);
+			return true;
+		}else
+			return false;
+	}
+	
+	
 	private void logOut() {
 		// Remove credentials from the session
 		mApi.getSession().unlink();
@@ -320,9 +355,10 @@ public class dropboxCoreManager extends Activity {
 							DropboxFileInfo fileInfo = fileStream.getFileInfo();
 							Log.i("DbExampleLog", "The file's rev is: "
 									+ fileInfo.getMetadata().rev);
+							Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);							
 							//TODO: Open file and read Title and cover image
 							adapter.add(new Libros(entry.fileName(), entry
-									.fileName(), entry.modified, null));													
+									.fileName(), entry.modified, icon));													
 						} catch (Exception e) {
 							Log.e(TAG,"Erro: "+e);
 
