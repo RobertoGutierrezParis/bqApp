@@ -1,12 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="es.bq.bqapp1"
+    package="es.bq.bqapp"
     android:versionCode="1"
     android:versionName="1.0" >
 
     <uses-sdk
-        android:minSdkVersion="8"
+        android:minSdkVersion="9"
         android:targetSdkVersion="18" />
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
 
     <application
         android:allowBackup="true"
@@ -14,7 +17,7 @@
         android:label="@string/app_name"
         android:theme="@style/AppTheme" >
         <activity
-            android:name="es.bq.bqapp1.MainActivity"
+            android:name="es.bq.bqapp.dropbox.dropboxCoreManager"
             android:label="@string/app_name" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
@@ -22,6 +25,27 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-    </application>
 
+    <activity android:name="com.dropbox.sync.android.DbxAuthActivity" />
+    <activity
+        android:name="com.dropbox.client2.android.AuthActivity"
+        android:launchMode="singleTask" >
+        <intent-filter>
+            <data android:scheme="db-rhbwrioxdyyecbt" />
+
+            <action android:name="android.intent.action.VIEW" />
+
+            <category android:name="android.intent.category.BROWSABLE" />
+            <category android:name="android.intent.category.DEFAULT" />
+        </intent-filter>
+    </activity>
+
+    <service
+        android:name="com.dropbox.sync.android.DbxSyncService"
+        android:enabled="true"
+        android:exported="false"
+        android:label="Dropbox Sync" />
+    
+    </application>            
+        
 </manifest>

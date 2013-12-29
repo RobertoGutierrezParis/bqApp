@@ -1,5 +1,6 @@
-package es.bq.bqapp1;
+package es.bq.bqapp;
 
+import es.bq.bqapp.R;
 import android.os.Bundle;
 import android.app.Activity;
 import android.view.Menu;
