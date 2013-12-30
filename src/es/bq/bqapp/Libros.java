@@ -3,11 +3,15 @@ package es.bq.bqapp;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.Serializable;
+import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.util.Calendar;
 import java.util.Date;
+import java.util.Locale;
 
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.text.format.DateFormat;
 import android.util.Log;
 
 public class Libros implements Serializable {
@@ -57,18 +61,19 @@ public class Libros implements Serializable {
 		this.fecha = formatDate(fecha);
 	}
 
-	private String formatDate(String dateIn) {
+	private String formatDate(String dateIn) {	
 		SimpleDateFormat formatter = new SimpleDateFormat(this.dateFormat);
+		SimpleDateFormat formatterIn = new SimpleDateFormat(this.dateFormatIn,Locale.US); //Locale US, cause dropbox return in this format
+		
 		try {
-			SimpleDateFormat formatterIn = new SimpleDateFormat(
-					this.dateFormatIn);
-			// Log.v(this.getClass().toString(),"Ejemplo de parseo: "+formatterIn.format(Calendar.getInstance().getTime()));
+			
 			Date parse = formatterIn.parse(dateIn);
 			return formatter.format(parse);
 		} catch (Exception e) {
 			Log.e(this.getClass().toString(),
 					"Error formateando fecha de entrada: " + dateIn
 							+ ".Error: " + e);
+			Log.v(this.getClass().toString(),"Ejemplo de parseo: "+formatterIn.format(Calendar.getInstance().getTime()));			
 			Log.v(this.getClass().toString(),
 					"Error formateando fecha de entrada: " + dateIn
 							+ ".Error: " + e);
