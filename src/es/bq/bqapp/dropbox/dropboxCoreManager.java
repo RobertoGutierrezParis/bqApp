@@ -1,8 +1,12 @@
 package es.bq.bqapp.dropbox;
 
-import java.io.IOException;
+
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
+
+import nl.siegmann.epublib.domain.Book;
+import nl.siegmann.epublib.epub.EpubReader;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -20,6 +24,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.LinearLayout;
@@ -36,16 +42,15 @@ import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
 import com.dropbox.client2.session.TokenPair;
 
+import es.bq.bqapp.DisplayEBook;
+import es.bq.bqapp.EnumHolderData;
 import es.bq.bqapp.Libros;
 import es.bq.bqapp.R;
 import es.bq.bqapp.adapters.LibrosAdapter;
 
-/*
- * Clase principal para la aplicacion
- * Contiene los objetos necesarios para la conexion con el core Api de Drobbox
- */
 
-public class dropboxCoreManager extends Activity {
+
+public class dropboxCoreManager extends Activity implements OnItemClickListener {
 
 	// TAG utilizado para los logs que se generar
 	private static final String TAG = "dropboxCoreManager";
@@ -83,46 +88,34 @@ public class dropboxCoreManager extends Activity {
 	private boolean mLoggedIn;
 
 	
+	
+	//Menu Items
+	private MenuItem mSortByTilte;
+	private MenuItem mSortByDate;
+	private MenuItem mReload;
 
 
 	
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
+		setContentView(R.layout.activity_main);		
+		loadViewComponents();
+		
 		// We create a new AuthSession so that we can use the Dropbox API.
 		AndroidAuthSession session = buildSession();
 		//Initialize Dropbox Api whith current android session
 		mApi = new DropboxAPI<AndroidAuthSession>(session);
 
-		// Basic Android widgets
-		setContentView(R.layout.activity_main);
-
-		
 		//Check correct configuration needed for Core Dropbox Api
 		checkAppKeySetup();
 
-		mSubmit = (Button) findViewById(R.id.auth_button);
-		gvLibros = (GridView) findViewById(R.id.gvItems);
-
-
-		mSubmit.setOnClickListener(new OnClickListener() {
-			public void onClick(View v) {
-				// This logs you out if you're logged in, or vice versa
-				if (mLoggedIn) {
-					if (adapter != null)
-						adapter.clear();
-					logOut();
-				} else {
-					// Start the remote authentication					
-					mApi.getSession().startAuthentication(dropboxCoreManager.this);
-				}
-			}
-		});
-		mDisplay = (LinearLayout) findViewById(R.id.logged_in_display);
 
 		StrictMode.ThreadPolicy policy = new StrictMode.ThreadPolicy.Builder().permitAll().build();
 		StrictMode.setThreadPolicy(policy);
 
+		//Launch registry  
+		mApi.getSession().startAuthentication(dropboxCoreManager.this);
 		// Display the proper UI state if logged in or not
 		setLoggedIn(mApi.getSession().isLinked());
 
@@ -150,9 +143,16 @@ public class dropboxCoreManager extends Activity {
 				TokenPair tokens = session.getAccessTokenPair();
 				storeKeys(tokens.key, tokens.secret);
 				if(adapter==null || adapter.isEmpty()){ 
-					// Inicializamos el adapter.
+					// Inicializamos el adapter.				
 					adapter = new LibrosAdapter(this,new ArrayList<Libros>());					
-					listFiles(DROPBOX_DIR, FILE_EXTENSION);
+					Thread t= new Thread(new Runnable() {						
+						@Override
+						public void run() {														
+							listFiles(DROPBOX_DIR, FILE_EXTENSION);
+						}
+					});
+					t.start();
+					
 				}				
 				setLoggedIn(true);
 			} catch (IllegalStateException e) {
@@ -160,6 +160,8 @@ public class dropboxCoreManager extends Activity {
 						+ e.getLocalizedMessage());
 				Log.i(TAG, "Error authenticating", e);
 			}
+		}else{
+			logOut();
 		}
 		gvLibros.setAdapter(adapter);		
 	}
@@ -184,9 +186,14 @@ public class dropboxCoreManager extends Activity {
 	public boolean onCreateOptionsMenu(Menu menu) {
 		MenuInflater menuInflater = getMenuInflater();		
 		menuInflater.inflate(R.layout.activity_menu, menu);
+		mSortByTilte= (MenuItem) menu.findItem(R.id.sort_by_title);
+		mSortByDate =(MenuItem) menu.findItem(R.id.sort_by_date);
+		mReload = (MenuItem) menu.findItem(R.id.refreshList);
+		Log.v(TAG, "Menu cargado");
+		setItemMenu(mLoggedIn);
 		return true;
-	}
-
+	}	
+	
 	/*
 	* Event Handling for Individual menu item selected
 	* Identify single menu item by it's id
@@ -201,6 +208,15 @@ public class dropboxCoreManager extends Activity {
 				case R.id.sort_by_date:
 					adapter.sortByDate();
 					break;
+				case R.id.refreshList:
+					adapter.clear();
+					Thread t = new Thread(new Runnable() {						
+						@Override
+						public void run() {
+							listFiles(DROPBOX_DIR, FILE_EXTENSION);							
+						}
+					});
+					t.start();
 				default:
 					return super.onOptionsItemSelected(item);
 			}
@@ -211,6 +227,56 @@ public class dropboxCoreManager extends Activity {
 	}
 	
 	
+	@Override
+	public void finish() {
+	    Log.v(TAG, "finish app");      	        
+	    System.runFinalization();
+		 adapter.clear(); // Free al image resource lodaded
+		 clearKeys();	
+		 mApi.getSession().unlink();
+	    super.finish();
+	    android.os.Process.killProcess(android.os.Process.myPid());
+	}
+	
+	@Override
+	public void onBackPressed()
+	{
+		 this.finish();
+	}
+	
+	private void loadViewComponents(){
+		mSubmit = (Button) findViewById(R.id.auth_button);
+		gvLibros = (GridView) findViewById(R.id.gvItems);
+		gvLibros.setOnItemClickListener(this);
+
+		mSubmit.setOnClickListener(new OnClickListener() {
+			public void onClick(View v) {
+				// This logs you out if you're logged in, or vice versa
+				if (mLoggedIn) {
+					if (adapter != null)
+						adapter.clear();
+					logOut();
+				} else {
+					// Start the remote authentication					
+					mApi.getSession().startAuthentication(dropboxCoreManager.this);
+				}
+			}
+		});
+		mDisplay = (LinearLayout) findViewById(R.id.logged_in_display);
+		
+	}
+	
+	
+	private void setItemMenu(boolean state){
+		Log.v(TAG,"Menu estado: "+state);
+		if(mSortByDate!= null)
+			mSortByDate.setVisible(state);
+		if(mSortByTilte!= null)
+			mSortByTilte.setVisible(state);
+		if(mReload!= null)
+			mReload.setVisible(state);	
+	}
+	
 	private void logOut() {
 		// Remove credentials from the session
 		mApi.getSession().unlink();
@@ -220,20 +286,23 @@ public class dropboxCoreManager extends Activity {
 		clearKeys();
 		// Change UI state to display logged out version
 		setLoggedIn(false);
+		setItemMenu(false);
 	}
 
 	//
 	// Convenience function to change UI state based on being logged in
 	//
 	private void setLoggedIn(boolean loggedIn) {
+		Log.v(TAG,"Login: "+loggedIn);
 		mLoggedIn = loggedIn;
 		if (loggedIn) {
 			mSubmit.setText("Unlink from Dropbox");
 			mDisplay.setVisibility(View.VISIBLE);
 		} else {
 			mSubmit.setText("Link with Dropbox");
-			mDisplay.setVisibility(View.GONE);
-		}
+			mDisplay.setVisibility(View.VISIBLE);
+		}		
+		setItemMenu(mLoggedIn);
 	}
 
 	private void checkAppKeySetup() {
@@ -339,11 +408,17 @@ public class dropboxCoreManager extends Activity {
 	 */
 	private void listFiles(String dir,String extension) {
 		try {
-
+			runOnUiThread(new Runnable() {				
+				@Override
+				public void run() {
+					setItemMenu(false);					
+				}
+			});
+			
 			Entry files = mApi.metadata(dir, 10000, null, true, null);
-			List<Entry> contents = files.contents;
-			adapter.clear();
-			for (Entry entry : contents) {
+			
+			List<Entry> contents = files.contents;			
+			for (final Entry entry : contents) {
 				Log.i(TAG, "Fichero: " + entry.path + "/" + entry.fileName());
 				if (!entry.isDeleted) {
 					if (entry.fileName().toLowerCase()
@@ -354,20 +429,35 @@ public class dropboxCoreManager extends Activity {
 									entry.rev);
 							DropboxFileInfo fileInfo = fileStream.getFileInfo();
 							Log.i("DbExampleLog", "The file's rev is: "
-									+ fileInfo.getMetadata().rev);
-							Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);							
-							//TODO: Open file and read Title and cover image
-							adapter.add(new Libros(entry.fileName(), entry
-									.fileName(), entry.modified, icon));													
+									+ fileInfo.getMetadata().rev);							
+							// Load Book from inputStream																
+							final Book book = (new EpubReader()).readEpub(fileStream);
+							// Log the book's authors
+							Log.i("epublib", "author(s): "
+									+ book.getMetadata().getAuthors());
+							// Log the book's title
+							Log.i("epublib", "title: " + book.getTitle());
+							// Log the book's coverimage property
+													      
+							final Bitmap coverImage = BitmapFactory.decodeStream(book
+									.getCoverImage().getInputStream());
+							Log.i("epublib",
+									"Coverimage is " + coverImage.getWidth()
+											+ " by " + coverImage.getHeight()
+											+ " pixels");							
+							runOnUiThread(new Runnable() {								
+								@Override
+								public void run() {
+									adapter.add(new Libros(book.getTitle(), entry.fileName(), entry.modified, coverImage));
+									adapter.notifyDataSetChanged();
+								}
+							});
+							
 						} catch (Exception e) {
-							Log.e(TAG,"Erro: "+e);
+							Log.e(TAG, "Error leyendo EPUB");
 
 						}
-					} else
-						Log.d(TAG, "El fichero: " + entry.fileName()
-								+ " no tiene la extension buscada: "
-								+ extension);
-
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -375,9 +465,39 @@ public class dropboxCoreManager extends Activity {
 					+ e);
 			Log.d(TAG,
 					"Error leyendo directorio: " + DROPBOX_DIR + ". Error: ", e);
+			showToast("Error cargando biblioteca");
 		}
+		
+		runOnUiThread(new Runnable() {				
+			@Override
+			public void run() {
+				setItemMenu(true);					
+			}
+		});
+
 	}
 	
+	
+
+	@Override
+	public void onItemClick(AdapterView<?> adapter, View view, int position,long ID) {
+		  Log.v(TAG, "Click en objeto: " + position + ". ID: " + ID);		  
+		  Intent intent = new Intent(this, DisplayEBook.class);
+		  EnumHolderData.setData(this.adapter.getPosition(position));
+		  startActivity(intent);
+	}
+	    
+	public byte[] bitmapToByteArray(Bitmap bm) {
+        // Create the buffer with the correct size    	    	
+        int iBytes = bm.getWidth() * bm.getHeight() * 4;
+        ByteBuffer buffer = ByteBuffer.allocate(iBytes);
+        // Log.e("DBG", buffer.remaining()+""); -- Returns a correct number based on dimensions
+        // Copy to buffer and then into byte array
+        bm.copyPixelsToBuffer(buffer);
+        // Log.e("DBG", buffer.remaining()+""); -- Returns 0
+        return buffer.array();
+    }	
+
 	
 	
 }
