@@ -16,6 +16,7 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
+import android.opengl.Visibility;
 import android.os.Bundle;
 import android.os.StrictMode;
 import android.util.Log;
@@ -31,6 +32,7 @@ import android.widget.CompoundButton;
 import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.GridView;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.Toast;
 import android.widget.ToggleButton;
 
@@ -90,6 +92,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 	private LinearLayout mDisplay;
 	private boolean mLoggedIn;
 	private ToggleButton mReadEbookInfo;
+	private ProgressBar mProgress;
 	
 	
 	//Menu Items
@@ -255,6 +258,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 		mReadEbookInfo.setOnCheckedChangeListener(this);
 		gvLibros = (GridView) findViewById(R.id.gvItems);
 		gvLibros.setOnItemClickListener(this);
+		mProgress = (ProgressBar)findViewById(R.id.progressBar1);
 
 		mSubmit.setOnClickListener(new OnClickListener() {
 			public void onClick(View v) {
@@ -418,14 +422,24 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 			runOnUiThread(new Runnable() {				
 				@Override
 				public void run() {
-					setItemMenu(false);					
+					setItemMenu(false);
+					mProgress.setVisibility(View.VISIBLE);
+					mProgress.setProgress(0);
 				}
 			});
 			
 			Entry files = mApi.metadata(dir, 10000, null, true, null);			
-			List<Entry> contents = files.contents;			
+			List<Entry> contents = files.contents;		
+			mProgress.setMax(contents.size());
 			for (final Entry entry : contents) {
 				Log.i(TAG, "Fichero: " + entry.path + "/" + entry.fileName());
+				runOnUiThread(new Runnable() {				
+					@Override
+					public void run() {
+						mProgress.incrementProgressBy(1);
+					}
+				});
+					
 				if (!entry.isDeleted) {
 					if (entry.fileName().toLowerCase()
 							.endsWith(extension.toLowerCase())) {
@@ -476,9 +490,11 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 		runOnUiThread(new Runnable() {				
 			@Override
 			public void run() {
-				setItemMenu(true);					
+				setItemMenu(true);
+				mProgress.setVisibility(View.INVISIBLE);
 			}
 		});
+		
 
 	}
 	
