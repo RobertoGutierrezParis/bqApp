@@ -10,20 +10,6 @@
         android:layout_height="wrap_content"
         android:text="Link with Dropbox" />
 
-    <!--<LinearLayout
-        android:id="@+id/logged_in_display"
-        android:layout_width="fill_parent"
-        android:layout_height="206dp"
-        android:orientation="vertical" >
-
-        <ListView
-            android:id="@+id/lvItems"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
-            android:layout_below="@+id/auth_button" />
-    </LinearLayout>-->
-
     <LinearLayout
         android:id="@+id/logged_in_display"
         android:layout_width="fill_parent"        
@@ -36,6 +22,7 @@
             android:layout_height="wrap_content"
             android:layout_alignParentLeft="true"
             android:numColumns="3"
+        	android:stretchMode="columnWidth"
             android:layout_below="@+id/lvItems" >
         </GridView>        
     </LinearLayout>
