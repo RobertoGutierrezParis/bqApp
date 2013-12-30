@@ -4,27 +4,42 @@
     android:layout_height="fill_parent"
     android:orientation="vertical" >
 
-    <Button
-        android:id="@+id/auth_button"
-        android:layout_width="fill_parent"
-        android:layout_height="wrap_content"
-        android:text="Link with Dropbox" />
-
     <LinearLayout
         android:id="@+id/logged_in_display"
-        android:layout_width="fill_parent"        
+        android:layout_width="fill_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical" >
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content" >
+
+            <TextView
+                android:id="@+id/textView1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="@string/readEbook"
+                android:textAppearance="?android:attr/textAppearanceLarge" />
+
+            <ToggleButton
+                android:id="@+id/readEbookInfo"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content" />
+        </LinearLayout>
+
+        <Button
+            android:id="@+id/auth_button"
+            android:layout_width="fill_parent"
+            android:layout_height="wrap_content"
+            android:text="Link with Dropbox" />
 
         <GridView
             android:id="@+id/gvItems"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_alignParentLeft="true"
             android:numColumns="3"
-        	android:stretchMode="columnWidth"
-            android:layout_below="@+id/lvItems" >
-        </GridView>        
+            android:stretchMode="columnWidth" >
+        </GridView>
     </LinearLayout>
 
 </LinearLayout>

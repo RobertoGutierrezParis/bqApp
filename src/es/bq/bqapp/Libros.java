@@ -22,19 +22,15 @@ public class Libros implements Serializable {
 	private Bitmap drawableImage = null;
 	private String dateFormat = "yyyy-MM-dd HH:mm";
 	private String dateFormatIn = "EEE, dd MMM yyyy HH:mm:ss Z";
+	private String rev="";
+	private boolean isRead=false;
 
-	public Libros(String titulo, String fileName, String fecha, Bitmap image) {
+	public Libros(String titulo, String fileName, String fecha,String rev, Bitmap image,boolean read) {
 		this.titulo = titulo;
 		this.fileName = fileName;
 		this.fecha = formatDate(fecha);
 		this.setDrawableImage(image);
-	}
-
-	public Libros(String titulo, String fileName, Date fecha, Bitmap image) {
-		this.titulo = titulo;
-		this.fileName = fileName;
-		this.fecha = formatDate(fecha);
-		this.setDrawableImage(image);
+		this.isRead=read;
 	}
 
 	public String getFileName() {
@@ -91,5 +87,21 @@ public class Libros implements Serializable {
 
 	public void setDrawableImage(Bitmap drawableImage) {
 		this.drawableImage = drawableImage;
+	}
+
+	public String getRev() {
+		return rev;
+	}
+
+	public void setRev(String rev) {
+		this.rev = rev;
+	}
+
+	public boolean isRead() {
+		return isRead;
+	}
+
+	public void setRead(boolean isRead) {
+		this.isRead = isRead;
 	}
 }

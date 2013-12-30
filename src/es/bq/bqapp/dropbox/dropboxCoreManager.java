@@ -27,9 +27,12 @@ import android.view.View.OnClickListener;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
+import android.widget.CompoundButton;
+import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.GridView;
 import android.widget.LinearLayout;
 import android.widget.Toast;
+import android.widget.ToggleButton;
 
 import com.dropbox.client2.DropboxAPI;
 import com.dropbox.client2.DropboxAPI.DropboxFileInfo;
@@ -50,7 +53,7 @@ import es.bq.bqapp.adapters.LibrosAdapter;
 
 
 
-public class dropboxCoreManager extends Activity implements OnItemClickListener {
+public class dropboxCoreManager extends Activity implements OnItemClickListener, OnCheckedChangeListener {
 
 	// TAG utilizado para los logs que se generar
 	private static final String TAG = "dropboxCoreManager";
@@ -86,13 +89,15 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener 
 	private Button mSubmit;
 	private LinearLayout mDisplay;
 	private boolean mLoggedIn;
-
+	private ToggleButton mReadEbookInfo;
 	
 	
 	//Menu Items
 	private MenuItem mSortByTilte;
 	private MenuItem mSortByDate;
 	private MenuItem mReload;
+
+	
 
 
 	
@@ -131,9 +136,9 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener 
 		super.onResume();
 		AndroidAuthSession session = mApi.getSession();
 
-		// The next part must be inserted in the onResume() method of the
-		// activity from which session.startAuthentication() was called, so
-		// that Dropbox authentication completes properly.
+		/* The next part must be inserted in the onResume() method of the
+		 * activity from which session.startAuthentication() was called, so
+		 * that Dropbox authentication completes properly. */
 		if (session.authenticationSuccessful()) {
 			try {
 				// Mandatory call to complete the auth
@@ -246,6 +251,8 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener 
 	
 	private void loadViewComponents(){
 		mSubmit = (Button) findViewById(R.id.auth_button);
+		mReadEbookInfo = (ToggleButton) findViewById(R.id.readEbookInfo);
+		mReadEbookInfo.setOnCheckedChangeListener(this);
 		gvLibros = (GridView) findViewById(R.id.gvItems);
 		gvLibros.setOnItemClickListener(this);
 
@@ -415,8 +422,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener 
 				}
 			});
 			
-			Entry files = mApi.metadata(dir, 10000, null, true, null);
-			
+			Entry files = mApi.metadata(dir, 10000, null, true, null);			
 			List<Entry> contents = files.contents;			
 			for (final Entry entry : contents) {
 				Log.i(TAG, "Fichero: " + entry.path + "/" + entry.fileName());
@@ -428,30 +434,29 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener 
 									entry.path + "/" + entry.fileName(),
 									entry.rev);
 							DropboxFileInfo fileInfo = fileStream.getFileInfo();
-							Log.i("DbExampleLog", "The file's rev is: "
-									+ fileInfo.getMetadata().rev);							
-							// Load Book from inputStream																
-							final Book book = (new EpubReader()).readEpub(fileStream);
-							// Log the book's authors
-							Log.i("epublib", "author(s): "
-									+ book.getMetadata().getAuthors());
-							// Log the book's title
-							Log.i("epublib", "title: " + book.getTitle());
-							// Log the book's coverimage property
-													      
-							final Bitmap coverImage = BitmapFactory.decodeStream(book
-									.getCoverImage().getInputStream());
-							Log.i("epublib",
-									"Coverimage is " + coverImage.getWidth()
-											+ " by " + coverImage.getHeight()
-											+ " pixels");							
-							runOnUiThread(new Runnable() {								
-								@Override
-								public void run() {
-									adapter.add(new Libros(book.getTitle(), entry.fileName(), entry.modified, coverImage));
-									adapter.notifyDataSetChanged();
-								}
-							});
+							if(mReadEbookInfo.isChecked()){ //If is checked read information
+								Log.i("DbExampleLog", "The file's rev is: "
+										+ fileInfo.getMetadata().rev);							
+								// Load Book from inputStream																
+								final Book book = (new EpubReader()).readEpub(fileStream);
+								final Bitmap coverImage = BitmapFactory.decodeStream(book
+										.getCoverImage().getInputStream());
+								runOnUiThread(new Runnable() {								
+									@Override
+									public void run() {
+										adapter.add(new Libros(book.getTitle(), entry.fileName(), entry.modified, entry.rev,coverImage,true));
+										adapter.notifyDataSetChanged();
+									}
+								});
+							}else{
+								runOnUiThread(new Runnable() {								
+									@Override
+									public void run() {										
+										adapter.add(new Libros(entry.fileName(), entry.fileName(), entry.modified, entry.rev,BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher),false));
+										adapter.notifyDataSetChanged();
+									}
+								});								
+							}
 							
 						} catch (Exception e) {
 							Log.e(TAG, "Error leyendo EPUB");
@@ -483,18 +488,52 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener 
 	public void onItemClick(AdapterView<?> adapter, View view, int position,long ID) {
 		  Log.v(TAG, "Click en objeto: " + position + ". ID: " + ID);		  
 		  Intent intent = new Intent(this, DisplayEBook.class);
+		  if(!mReadEbookInfo.isChecked() && !this.adapter.getPosition(position).isRead()){
+			  try{
+					DropboxInputStream fileStream = mApi.getFileStream(this.adapter.getPosition(position).getFileName(),this.adapter.getPosition(position).getRev());
+					DropboxFileInfo fileInfo = fileStream.getFileInfo();				
+					Log.i("DbExampleLog", "The file's rev is: "
+							+ fileInfo.getMetadata().rev);							
+					// Load Book from inputStream																
+					final Book book = (new EpubReader()).readEpub(fileStream);
+					final Bitmap coverImage = BitmapFactory.decodeStream(book
+							.getCoverImage().getInputStream());
+					this.adapter.getPosition(position).setTitulo(book.getTitle());
+					this.adapter.getPosition(position).setDrawableImage(coverImage);
+					this.adapter.getPosition(position).setRead(true);
+			  }catch(Exception e){
+				  Log.e(TAG, "Error abriendo portada del libro: "+this.adapter.getPosition(position).getFileName()+". Error"+e);
+				  Log.v(TAG, "Error abriendo portada del libro: "+this.adapter.getPosition(position).getFileName()+". Error",e);
+				  showToast("Error abierdo portada");
+				  return;
+			  }
+			  
+		  }
+		  
 		  EnumHolderData.setData(this.adapter.getPosition(position));
 		  startActivity(intent);
 	}
+
+	@Override
+	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked){
+	    // Is the toggle on?
+	    boolean on = ((ToggleButton) buttonView).isChecked();
 	    
-	public byte[] bitmapToByteArray(Bitmap bm) {
-        // Create the buffer with the correct size    	    	
+			adapter.clear();
+			Thread t = new Thread(new Runnable() {						
+				@Override
+				public void run() {
+					listFiles(DROPBOX_DIR, FILE_EXTENSION);							
+				}
+			});
+			t.start();
+	}
+	
+	
+	public byte[] bitmapToByteArray(Bitmap bm) {    	    	
         int iBytes = bm.getWidth() * bm.getHeight() * 4;
         ByteBuffer buffer = ByteBuffer.allocate(iBytes);
-        // Log.e("DBG", buffer.remaining()+""); -- Returns a correct number based on dimensions
-        // Copy to buffer and then into byte array
         bm.copyPixelsToBuffer(buffer);
-        // Log.e("DBG", buffer.remaining()+""); -- Returns 0
         return buffer.array();
     }	
 

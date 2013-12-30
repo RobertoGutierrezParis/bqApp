@@ -9,5 +9,6 @@
     <string name="sort_by_title">Ordenar por Titulo</string>
     <string name="sort_by_date">Ordenar por fecha</string>
     <string name="refreshList">ReLoad Biblioteca</string>
+    <string name="readEbook">Leer Ebook Info</string>
 
 </resources>
