@@ -9,6 +9,7 @@ import es.bq.bqapp.R;
 
 
 import android.content.Context;
+import android.graphics.Bitmap;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -25,6 +26,7 @@ import android.widget.Toast;
 
 public class LibrosAdapter extends ArrayAdapter<Libros>{
 
+	private final String TAG = this.getClass().toString();
 	private Context context;
 	private ArrayList<Libros> libros;
 
@@ -110,4 +112,15 @@ public class LibrosAdapter extends ArrayAdapter<Libros>{
 		if(libros!=null)
 			libros.clear();
 	}
+	
+	public Libros getPosition(int position){
+		if(position <= libros.size())
+			return libros.get(position);
+		else{
+			Log.e(TAG,"El libro en la posicion: "+position+" no existe");
+			return null;
+		}
+	}
+	
+
 }

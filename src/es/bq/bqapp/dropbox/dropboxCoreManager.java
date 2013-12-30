@@ -1,9 +1,13 @@
 package es.bq.bqapp.dropbox;
 
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
+import nl.siegmann.epublib.domain.Book;
+import nl.siegmann.epublib.epub.EpubReader;
 import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -20,6 +24,8 @@ import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.widget.AdapterView;
+import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
 import android.widget.GridView;
 import android.widget.LinearLayout;
@@ -36,16 +42,19 @@ import com.dropbox.client2.session.AppKeyPair;
 import com.dropbox.client2.session.Session.AccessType;
 import com.dropbox.client2.session.TokenPair;
 
+import es.bq.bqapp.DisplayEBook;
+import es.bq.bqapp.EnumHolderData;
 import es.bq.bqapp.Libros;
 import es.bq.bqapp.R;
 import es.bq.bqapp.adapters.LibrosAdapter;
+
 
 /*
  * Clase principal para la aplicacion
  * Contiene los objetos necesarios para la conexion con el core Api de Drobbox
  */
 
-public class dropboxCoreManager extends Activity {
+public class dropboxCoreManager extends Activity implements OnItemClickListener {
 
 	// TAG utilizado para los logs que se generar
 	private static final String TAG = "dropboxCoreManager";
@@ -103,6 +112,7 @@ public class dropboxCoreManager extends Activity {
 
 		mSubmit = (Button) findViewById(R.id.auth_button);
 		gvLibros = (GridView) findViewById(R.id.gvItems);
+		gvLibros.setOnItemClickListener(this);
 
 
 		mSubmit.setOnClickListener(new OnClickListener() {
@@ -354,20 +364,29 @@ public class dropboxCoreManager extends Activity {
 									entry.rev);
 							DropboxFileInfo fileInfo = fileStream.getFileInfo();
 							Log.i("DbExampleLog", "The file's rev is: "
-									+ fileInfo.getMetadata().rev);
-							Bitmap icon = BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher);							
-							//TODO: Open file and read Title and cover image
-							adapter.add(new Libros(entry.fileName(), entry
-									.fileName(), entry.modified, icon));													
-						} catch (Exception e) {
-							Log.e(TAG,"Erro: "+e);
+									+ fileInfo.getMetadata().rev);							
+							// Load Book from inputStream																
+							Book book = (new EpubReader()).readEpub(fileStream);
+							// Log the book's authors
+							Log.i("epublib", "author(s): "
+									+ book.getMetadata().getAuthors());
+							// Log the book's title
+							Log.i("epublib", "title: " + book.getTitle());
+							// Log the book's coverimage property
+													      
+							Bitmap coverImage = BitmapFactory.decodeStream(book
+									.getCoverImage().getInputStream());
+							Log.i("epublib",
+									"Coverimage is " + coverImage.getWidth()
+											+ " by " + coverImage.getHeight()
+											+ " pixels");
+							adapter.add(new Libros(book.getTitle(), entry
+									.fileName(), entry.modified, coverImage));													
+						} catch (IOException e) {
+							Log.e("epublib", e.getMessage());
 
 						}
-					} else
-						Log.d(TAG, "El fichero: " + entry.fileName()
-								+ " no tiene la extension buscada: "
-								+ extension);
-
+					}
 				}
 			}
 		} catch (Exception e) {
@@ -378,6 +397,27 @@ public class dropboxCoreManager extends Activity {
 		}
 	}
 	
+	
+
+	@Override
+	public void onItemClick(AdapterView<?> adapter, View view, int position,
+			long ID) {
+		  Log.v(TAG, "Click en objeto: " + position + ". ID: " + ID);		  
+		  Intent intent = new Intent(this, DisplayEBook.class);
+		  EnumHolderData.setData(this.adapter.getPosition(position));
+		  startActivity(intent);
+	}
+	    
+	public byte[] bitmapToByteArray(Bitmap bm) {
+        // Create the buffer with the correct size    	    	
+        int iBytes = bm.getWidth() * bm.getHeight() * 4;
+        ByteBuffer buffer = ByteBuffer.allocate(iBytes);
+        // Log.e("DBG", buffer.remaining()+""); -- Returns a correct number based on dimensions
+        // Copy to buffer and then into byte array
+        bm.copyPixelsToBuffer(buffer);
+        // Log.e("DBG", buffer.remaining()+""); -- Returns 0
+        return buffer.array();
+    }
 	
 	
 }
