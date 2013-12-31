@@ -155,8 +155,9 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 					adapter = new LibrosAdapter(this,new ArrayList<Libros>());					
 					Thread t= new Thread(new Runnable() {						
 						@Override
-						public void run() {														
+						public void run() {							
 							listFiles(DROPBOX_DIR, FILE_EXTENSION);
+							
 						}
 					});
 					t.start();
@@ -417,17 +418,44 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 	 * 	 
 	 * 
 	 */
+	
 	private void listFiles(String dir,String extension) {
 		try {
+			
 			runOnUiThread(new Runnable() {				
 				@Override
 				public void run() {
 					setItemMenu(false);
+					mReadEbookInfo.setEnabled(false);
+					mSubmit.setEnabled(false);
 					mProgress.setVisibility(View.VISIBLE);
 					mProgress.setProgress(0);
 				}
 			});
+			listAllFiles(dir, extension);
+			runOnUiThread(new Runnable() {				
+				@Override
+				public void run() {
+					setItemMenu(true);
+					mProgress.setVisibility(View.INVISIBLE);
+					mReadEbookInfo.setEnabled(true);
+					mSubmit.setEnabled(true);
+				}
+			});
 			
+		} catch (Exception e) {
+			Log.e(TAG, "Error listando ficheros del directorio: " + DROPBOX_DIR + ". Error: "
+					+ e);
+			Log.d(TAG,
+					"Error leyendo directorio: " + DROPBOX_DIR + ". Error: ", e);
+			showToast("Error cargando biblioteca");
+		}
+		
+		
+	}
+	
+	private void listAllFiles(String dir,String extension) {
+		try{
 			Entry files = mApi.metadata(dir, 10000, null, true, null);			
 			List<Entry> contents = files.contents;		
 			mProgress.setMax(contents.size());
@@ -439,8 +467,9 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 						mProgress.incrementProgressBy(1);
 					}
 				});
-					
-				if (!entry.isDeleted) {
+				if(entry.isDir)
+					listAllFiles(entry.path, extension);
+				else if (!entry.isDeleted) {
 					if (entry.fileName().toLowerCase()
 							.endsWith(extension.toLowerCase())) {
 						try {
@@ -458,7 +487,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 								runOnUiThread(new Runnable() {								
 									@Override
 									public void run() {
-										adapter.add(new Libros(book.getTitle(), entry.fileName(), entry.modified, entry.rev,coverImage,true));
+										adapter.add(new Libros(book.getTitle(), entry.path,entry.fileName(), entry.modified, entry.rev,coverImage,true));
 										adapter.notifyDataSetChanged();
 									}
 								});
@@ -466,7 +495,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 								runOnUiThread(new Runnable() {								
 									@Override
 									public void run() {										
-										adapter.add(new Libros(entry.fileName(), entry.fileName(), entry.modified, entry.rev,BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher),false));
+										adapter.add(new Libros(entry.fileName(),entry.path, entry.fileName(), entry.modified, entry.rev,BitmapFactory.decodeResource(getResources(), R.drawable.ic_launcher),false));
 										adapter.notifyDataSetChanged();
 									}
 								});								
@@ -486,15 +515,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 					"Error leyendo directorio: " + DROPBOX_DIR + ". Error: ", e);
 			showToast("Error cargando biblioteca");
 		}
-		
-		runOnUiThread(new Runnable() {				
-			@Override
-			public void run() {
-				setItemMenu(true);
-				mProgress.setVisibility(View.INVISIBLE);
-			}
-		});
-		
+				
 
 	}
 	
@@ -506,7 +527,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 		  Intent intent = new Intent(this, DisplayEBook.class);
 		  if(!mReadEbookInfo.isChecked() && !this.adapter.getPosition(position).isRead()){
 			  try{
-					DropboxInputStream fileStream = mApi.getFileStream(this.adapter.getPosition(position).getFileName(),this.adapter.getPosition(position).getRev());
+					DropboxInputStream fileStream = mApi.getFileStream(this.adapter.getPosition(position).getPathFile(),this.adapter.getPosition(position).getRev());
 					DropboxFileInfo fileInfo = fileStream.getFileInfo();				
 					Log.i("DbExampleLog", "The file's rev is: "
 							+ fileInfo.getMetadata().rev);							
@@ -518,8 +539,8 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 					this.adapter.getPosition(position).setDrawableImage(coverImage);
 					this.adapter.getPosition(position).setRead(true);
 			  }catch(Exception e){
-				  Log.e(TAG, "Error abriendo portada del libro: "+this.adapter.getPosition(position).getFileName()+". Error"+e);
-				  Log.v(TAG, "Error abriendo portada del libro: "+this.adapter.getPosition(position).getFileName()+". Error",e);
+				  Log.e(TAG, "Error abriendo portada del libro: "+this.adapter.getPosition(position).getPathFile()+". Error"+e);
+				  Log.v(TAG, "Error abriendo portada del libro: "+this.adapter.getPosition(position).getPathFile()+". Error",e);
 				  showToast("Error abierdo portada");
 				  return;
 			  }
@@ -531,7 +552,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 	}
 
 	@Override
-	public void onCheckedChanged(CompoundButton buttonView, boolean isChecked){
+	public void onCheckedChanged(final CompoundButton buttonView, boolean isChecked){
 	    // Is the toggle on?
 	    boolean on = ((ToggleButton) buttonView).isChecked();
 	    
@@ -539,7 +560,7 @@ public class dropboxCoreManager extends Activity implements OnItemClickListener,
 			Thread t = new Thread(new Runnable() {						
 				@Override
 				public void run() {
-					listFiles(DROPBOX_DIR, FILE_EXTENSION);							
+					listFiles(DROPBOX_DIR, FILE_EXTENSION);
 				}
 			});
 			t.start();

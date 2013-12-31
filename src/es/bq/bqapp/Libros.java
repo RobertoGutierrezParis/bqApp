@@ -21,6 +21,7 @@ public class Libros implements Serializable {
 	
 	private static final long serialVersionUID = 7296824833886996820L;
 	private String titulo;
+	private String pathFile;
 	private String fileName;
 	private String fecha;
 	private Bitmap drawableImage = null;
@@ -29,8 +30,9 @@ public class Libros implements Serializable {
 	private String rev="";
 	private boolean isRead=false;
 
-	public Libros(String titulo, String fileName, String fecha,String rev, Bitmap image,boolean read) {
+	public Libros(String titulo, String path,String fileName, String fecha,String rev, Bitmap image,boolean read) {
 		this.titulo = titulo;
+		this.setPathFile(path);
 		this.fileName = fileName;
 		this.fecha = formatDate(fecha);
 		this.setDrawableImage(image);
@@ -108,5 +110,13 @@ public class Libros implements Serializable {
 
 	public void setRead(boolean isRead) {
 		this.isRead = isRead;
+	}
+
+	public String getPathFile() {
+		return pathFile;
+	}
+
+	public void setPathFile(String pathFile) {
+		this.pathFile = pathFile;
 	}
 }
